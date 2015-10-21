@@ -39,7 +39,7 @@ def main():
     except KeyboardInterrupt:
         log.info('Exit')
     except Exception:
-        log.exception('Unhandled exception')
+        log.critical('Unhandled exception, exit')
     finally:
         kill_all()
 

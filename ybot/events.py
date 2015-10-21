@@ -126,10 +126,10 @@ def emitter(*event_names, **kwargs):
                                     "%s emited unknown event %s",
                                     f.__name__, event_name
                                 )
-
-
                     except Exception, e:
                         if first_time:
+                            log.critical("Can't run emitter \"%s\" from module %s",
+                                         f.__name__, f.__module__)
                             raise e
                         else:
                             log.exception("Exception in emitter %s", f.__name__)
