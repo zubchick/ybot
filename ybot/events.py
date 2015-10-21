@@ -11,28 +11,25 @@ from gevent.queue import Queue
 log = logging.getLogger(__name__)
 
 __events = Queue()
-__listners = defaultdict(list)
+__listeners = defaultdict(list)
 __emitters = set()
 __jobs = []
 
 
-class ListenActor(gevent.Greenlet):
+class Actor(gevent.Greenlet):
     def __init__(self, f):
-        super(ListenActor, self).__init__()
+        super(Actor, self).__init__()
+        self.running = False
         self.events = Queue()
         self.f = f
 
     def _run(self):
         self.running = True
-
-        while self.running:
-            name, value = self.events.get()
-            self.on_event(name, value)
-            gevent.sleep(0)
+        raise NotImplementedError
 
     def on_event(self, name, value):
         try:
-            self.f(name, value)
+            return self.f(name, value)
         except Exception:
             log.exception('Exception on event %s in %s listener. Value %s',
                           name, self.f.__name__, value)
@@ -44,16 +41,46 @@ class ListenActor(gevent.Greenlet):
         return '<' + str(self) + '>'
 
 
+class Listener(Actor):
+    def _run(self):
+        self.running = True
+
+        while self.running:
+            name, value = self.events.get()
+            self.on_event(name, value)
+            gevent.sleep(0)
+
+
+class Splitter(Actor):
+    def __init__(self, f, emit_events=()):
+        super(Splitter, self).__init__(f)
+        self.emit_events = set(emit_events)
+
+    def _run(self):
+        self.running = True
+
+        while self.running:
+            name, value = self.events.get()
+            for event_name, value in self.on_event(name, value):
+                if event_name in self.emit_events:
+                    emit(event_name, value)
+                else:
+                    log.warning("%s emited unknown event %s, on args %s",
+                                self, event_name, (name, value))
+
+            gevent.sleep(0)
+
+
 def listener(*event_names):
     """ Decorator for listener functions
 
     event_names - names of events, that listener can handle
     """
     def wrapper(f):
-        obj = ListenActor(f)
+        obj = Listener(f)
 
         for event in set(event_names):
-            __listners[event].append(obj)
+            __listeners[event].append(obj)
 
         return obj
 
@@ -93,7 +120,13 @@ def emitter(*event_names, **kwargs):
                                 value = item
 
                             if event_name in event_names:
-                                __events.put((event_name, value))
+                                emit(event_name, value)
+                            else:
+                                log.warning(
+                                    "%s emited unknown event %s",
+                                    f.__name__, event_name
+                                )
+
 
                     except Exception, e:
                         if first_time:
@@ -112,6 +145,25 @@ def emitter(*event_names, **kwargs):
     return wrapper
 
 
+def splitter(listen_events, emit_events=()):
+    """ Decorator for event splitter
+    decorated function must take two parameters like any listener:
+    <event_name> and <value>
+
+    and return generator of tuples like multi emitter:
+    (new_event_name, value)
+
+    """
+    def wrapper(f):
+        obj = Splitter(f, emit_events)
+
+        for event in listen_events:
+            __listeners[event].append(obj)
+
+        return obj
+    return wrapper
+
+
 def run_emitters():
     for emitter in __emitters:
         gr = emitter()
@@ -119,8 +171,8 @@ def run_emitters():
         __jobs.append(gr)
 
 
-def run_listners():
-    for listener in set(chain(*__listners.values())):
+def run_listeners():
+    for listener in set(chain(*__listeners.values())):
         listener.start()
         __jobs.append(listener)
 
@@ -129,7 +181,7 @@ def run_eventloop():
     while True:
         event_name, value = __events.get()
 
-        for listener in __listners[event_name]:
+        for listener in __listeners[event_name]:
             listener.events.put((event_name, value))
 
         gevent.sleep(0)
@@ -138,7 +190,7 @@ def run_eventloop():
 def run_all():
     gevent.signal(signal.SIGQUIT, gevent.kill)
     run_emitters()
-    run_listners()
+    run_listeners()
     eventloop = gevent.spawn(run_eventloop)
     __jobs.append(eventloop)
     gevent.joinall(__jobs, raise_error=True)
@@ -146,7 +198,13 @@ def run_all():
 
 def kill_all():
     for job in __jobs:
-        if isinstance(job, ListenActor):
+        if isinstance(job, Actor):
             job.running = False
 
     gevent.killall(__jobs, block=True)
+
+
+def emit(event_name, value):
+    """ Emit event with event_name and value """
+    log.debug('Event %s emited', event_name)
+    __events.put((event_name, value))
