@@ -206,5 +206,5 @@ def kill_all():
 
 def emit(event_name, value):
     """ Emit event with event_name and value """
-    log.debug('Event %s emited', event_name)
+    log.info('Event %s emited', event_name)
     __events.put((event_name, value))
