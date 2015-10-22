@@ -1,15 +1,9 @@
 # coding: utf-8
-import ConfigParser
-from collections import OrderedDict
+import yaml
 settings = None
 
 
 def parse(fp):
     global settings
-
-    config = ConfigParser.RawConfigParser()
-    config.readfp(fp)
-    settings = OrderedDict(
-        (s, dict(config.items(s))) for s in config.sections()
-    )
+    settings = yaml.load(fp)
     return settings
