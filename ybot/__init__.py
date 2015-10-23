@@ -1,13 +1,15 @@
 # coding: utf-8
 import sys
 import logging
+from importlib import import_module
 from gevent import monkey
 
 from .conf import parse
 from .events import run_all, kill_all
+from . import state
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.WARNING,
     format='%(asctime)s [%(levelname)s] [%(name)s] %(message)s'
 )
 
@@ -16,13 +18,26 @@ log = logging.getLogger(__name__)
 
 
 def setup(core_opts):
-    pass
+    # logging
+    level = core_opts['log_level']
+    logging.root.setLevel(level)
+
+    # state backend
+    backend = core_opts.get('state_backend', 'ybot.state.sqlite')
+    try:
+        module = import_module(backend)
+    except ImportError:
+        log.error("Can't import %s state backend", backend)
+        raise
+
+    module.State._setup(core_opts)
+    state.State = module.State
 
 
 def load_modules(modules_conf):
     for module_name, options in modules_conf.items():
         try:
-            __import__(module_name)
+            import_module(module_name)
         except ImportError:
             log.error("Can't import %s module", module_name)
             raise
