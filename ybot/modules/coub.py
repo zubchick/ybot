@@ -19,6 +19,6 @@ def send_weekly(name, value):
         bot.sendMessage(
             chat_id=chat_id,
             text=("Thanks god, it's friday! Time to watch some coubs. " +
-                  url.format(year=year, week=week - 1)
+                  url.format(year=year, week=week)
               )
         )
