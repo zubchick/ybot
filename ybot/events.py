@@ -34,11 +34,14 @@ class Actor(gevent.Greenlet):
             log.exception('Exception on event %s in %s listener. Value %s',
                           name, self.f.__name__, value)
 
-    def __str__(self):
-        return "%s: %s" % (self.__class__.__name__, self.f.__name__)
-
     def __repr__(self):
-        return '<' + str(self) + '>'
+        return '<%s: %s>' % (self.__class__.__name__, self.f.__name__)
+
+
+def emit(event_name, value):
+    """ Emit event with event_name and value """
+    log.info('Event %s emited', event_name)
+    __events.put((event_name, value))
 
 
 class Listener(Actor):
@@ -80,11 +83,27 @@ def listener(*event_names):
         obj = Listener(f)
 
         for event in set(event_names):
-            __listeners[event].append(obj)
+            subscibe(event, obj, _run=False)
 
         return obj
 
     return wrapper
+
+
+def subscibe(event_name, listener_func, _run=True):
+    """ Make Listener from listener_func, and subscribe to event_name """
+    if not isinstance(listener_func, (Listener, Splitter)):
+        listener = Listener(listener_func)
+    else:
+        listener = listener_func
+
+    __listeners[event_name].append(listener)
+
+    log.info('Lisnter %s subscribed to event %s', listener, event_name)
+
+    if _run:
+        listener.start()
+        __jobs.append(listener)
 
 
 def emitter(*event_names, **kwargs):
@@ -99,10 +118,12 @@ def emitter(*event_names, **kwargs):
                   in event_names decorator parameter
 
     sleep       - optional, default 0, timeout between emitter restarts
+    check       - optional, default True, check that emited events in event_names
     """
     sleep = kwargs.get('sleep', 0)
     multi = kwargs.get('multi', False)
     event_names = set(event_names)
+    check = kwargs.get('check', True)
 
     def wrapper(f):
         @wraps(f)
@@ -119,7 +140,7 @@ def emitter(*event_names, **kwargs):
                                 event_name = list(event_names)[0]
                                 value = item
 
-                            if event_name in event_names:
+                            if not check or event_name in event_names:
                                 emit(event_name, value)
                             else:
                                 log.warning(
@@ -158,7 +179,7 @@ def splitter(listen_events, emit_events=()):
         obj = Splitter(f, emit_events)
 
         for event in listen_events:
-            __listeners[event].append(obj)
+            subscibe(event, obj, _run=False)
 
         return obj
     return wrapper
@@ -202,9 +223,3 @@ def kill_all():
             job.running = False
 
     gevent.killall(__jobs, block=True)
-
-
-def emit(event_name, value):
-    """ Emit event with event_name and value """
-    log.info('Event %s emited', event_name)
-    __events.put((event_name, value))
