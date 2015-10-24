@@ -23,6 +23,9 @@ def updates():
 
 
 @splitter(['ybot.telegram.message'], ['ybot.telegram.command'])
-def comand_splitter(name, value):
-    if re.match(r'^/\w+( .*)?$', value.text):
+def command_splitter(name, value):
+    bot_name = conf.get('bot_name', r'\w{1,32}')
+    pattern = r'^/\w+(:?@{name})?( .*)?$'.format(name=bot_name)
+
+    if re.match(pattern, value.text):
         yield ('ybot.telegram.command', value)
