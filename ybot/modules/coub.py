@@ -1,14 +1,14 @@
 # coding: utf-8
 from datetime import datetime, timedelta
 
-from ybot.events import listener
 from ybot.conf import settings
 from .telegram import bot
+from .cron import cron
 
 conf = settings[__name__]
 
 
-@listener('ybot.coub_weekly')
+@cron('ybot.coub_weekly', '0 16 * * fri')
 def send_weekly(name, value):
     last_fiday = datetime.now() - timedelta(7)
     url = 'https://coub.com/weekly/{year}/{week}'
