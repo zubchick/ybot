@@ -55,9 +55,10 @@ class Listener(Actor):
 
 
 class Splitter(Actor):
-    def __init__(self, f, emit_events=()):
+    def __init__(self, f, emit_events=(), check=True):
         super(Splitter, self).__init__(f)
         self.emit_events = set(emit_events)
+        self.check = check
 
     def _run(self):
         self.running = True
@@ -65,7 +66,7 @@ class Splitter(Actor):
         while self.running:
             name, value = self.events.get()
             for event_name, value in self.on_event(name, value):
-                if event_name in self.emit_events:
+                if not self.check or event_name in self.emit_events:
                     emit(event_name, value)
                 else:
                     log.warning("%s emited unknown event %s, on args %s",
@@ -109,7 +110,7 @@ def subscibe(event_name, listener_func, _run=True):
 def emitter(*event_names, **kwargs):
     """ Decorator for event generators
 
-    event_names - names of events, that generator emits, if multi=False (defalt)
+    event_names - names of events, that generator emits, if multi=False (default)
                   it must be only one event_name, and generator must return only
                   event values
 
@@ -166,7 +167,7 @@ def emitter(*event_names, **kwargs):
     return wrapper
 
 
-def splitter(listen_events, emit_events=()):
+def splitter(listen_events, emit_events=(), check=True):
     """ Decorator for event splitter
     decorated function must take two parameters like any listener:
     <event_name> and <value>
@@ -176,7 +177,7 @@ def splitter(listen_events, emit_events=()):
 
     """
     def wrapper(f):
-        obj = Splitter(f, emit_events)
+        obj = Splitter(f, emit_events, check)
 
         for event in listen_events:
             subscibe(event, obj, _run=False)
