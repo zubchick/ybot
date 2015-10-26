@@ -7,11 +7,10 @@ import telegram
 
 from ybot.state import State
 from ybot.events import subscibe
-from .telegram import bot
-
+from ybot.modules.comands import add_command
+from ybot.modules.telegram import bot
 
 log = logging.getLogger(__name__)
-__dialogs = {}
 
 
 class Response(object):
@@ -33,7 +32,7 @@ class Dialog(State):
         return super(Dialog, self).key('.'.join(map(str, [self.name, name])))
 
 
-def fname(f):
+def _fname(f):
     return '.'.join([f.__module__, f.__name__])
 
 
@@ -54,8 +53,6 @@ def get_dialog_dispatcher(conf):
 
         dialog = Dialog(value.chat_id, dialog_name)
 
-        privat = False
-
         # if it's initial command
         if entry_command in value.text.lower():
             state = {}
@@ -71,11 +68,10 @@ def get_dialog_dispatcher(conf):
             store_key = reply_to.message_id
             handler_name, state = dialog.pop(store_key, (None, {}))
 
-        # dialog continuation in privat chat
+        # dialog continuation in private chat
         elif value.chat.type == 'private':
             store_key = ''
             handler_name, state = dialog.pop(store_key, (None, {}))
-            privat = True
         else:
             return
 
@@ -98,28 +94,30 @@ def get_dialog_dispatcher(conf):
                             (dialog_name, handler, type(handler)))
 
         if result.text is not None:
-            force_reply = False if privat else result.next is not None
+            private = value.chat.type == 'private'
+            force_reply = False if private else result.next is not None
             msg = _reply(value.chat_id, result.text, force_reply)
 
-            # change store key if we had an update
-            store_key = msg.message_id
+            # change store key if we had an update on group chat
+            if not private:
+                store_key = msg.message_id
 
         if result.next is not None:
-            dialog.set(store_key, (fname(result.next), result.state))
+            dialog.set(store_key, (_fname(result.next), result.state))
 
     _dispatch.__name__ = conf[''].__name__
     return _dispatch
 
 
 def create_dialog(config):
-    __dialogs[config['command']] = config['description']
+    add_command(config['command'], config['description'])
     entry = config['entrypoint']
     entry.command = config['command']
 
     disp_conf = {'': entry}
 
     for handler in config['handlers']:
-        disp_conf[fname(handler)] = handler
+        disp_conf[_fname(handler)] = handler
 
     disp = get_dialog_dispatcher(disp_conf)
 
