@@ -45,3 +45,8 @@ class State(BaseState):
             return default
         else:
             return json.loads(res[0])
+
+    def _delete(self, name):
+        c = conn.cursor()
+        c.execute('''delete from kv where key=?''', (name,))
+        conn.commit()
