@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from ybot.events import listener
-from ybot.modules.comands import add_command
+from ybot.modules.commands import add_command
 from ..telegram import bot
 
 
