@@ -1,6 +1,7 @@
 # coding: utf-8
 import signal
 import logging
+import time
 from functools import wraps
 from collections import defaultdict
 from itertools import chain
@@ -65,12 +66,15 @@ class Splitter(Actor):
 
         while self.running:
             name, value = self.events.get()
-            for event_name, value in self.on_event(name, value):
-                if not self.check or event_name in self.emit_events:
-                    emit(event_name, value)
-                else:
-                    log.warning("%s emited unknown event %s, on args %s",
-                                self, event_name, (name, value))
+            try:
+                for event_name, value in self.on_event(name, value):
+                    if not self.check or event_name in self.emit_events:
+                        emit(event_name, value)
+                    else:
+                        log.warning("%s emited unknown event %s, on args %s",
+                                    self, event_name, (name, value))
+            except Exception:
+                log.exception('Exception in splitter %s, event %s', self, name)
 
             gevent.sleep(0)
 
@@ -130,7 +134,7 @@ def emitter(*event_names, **kwargs):
         @wraps(f)
         def inner():
             def run():
-                first_time = True
+                start_time = time.time()
 
                 while True:
                     try:
@@ -149,14 +153,12 @@ def emitter(*event_names, **kwargs):
                                     f.__name__, event_name
                                 )
                     except Exception, e:
-                        if first_time:
+                        if time.time() - start_time < 10:
                             log.critical("Can't run emitter \"%s\" from module %s",
                                          f.__name__, f.__module__)
                             raise e
                         else:
                             log.exception("Exception in emitter %s", f.__name__)
-                    else:
-                        first_time = False
 
                     gevent.sleep(sleep)
 

@@ -18,8 +18,7 @@ class Response(object):
         self.text = text
         self.state = state
 
-        assert(callable(next) or next is None,
-               "`next` must be a function, not a %s" % type(next))
+        assert callable(next) or next is None, "`next` must be a function, not a %s" % type(next)
         self.next = next
 
 
