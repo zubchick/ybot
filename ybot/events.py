@@ -131,41 +131,38 @@ def emitter(*event_names, **kwargs):
     check = kwargs.get('check', True)
 
     def wrapper(f):
-        @wraps(f)
-        def inner():
-            def run():
-                start_time = time.time()
+        def run():
+            start_time = time.time()
 
-                while True:
-                    try:
-                        for item in f():
-                            if multi:
-                                event_name, value = item
-                            else:
-                                event_name = list(event_names)[0]
-                                value = item
-
-                            if not check or event_name in event_names:
-                                emit(event_name, value)
-                            else:
-                                log.warning(
-                                    "%s emited unknown event %s",
-                                    f.__name__, event_name
-                                )
-                    except Exception, e:
-                        if time.time() - start_time < 10:
-                            log.critical("Can't run emitter \"%s\" from module %s",
-                                         f.__name__, f.__module__)
-                            raise e
+            while True:
+                try:
+                    for item in f():
+                        if multi:
+                            event_name, value = item
                         else:
-                            log.exception("Exception in emitter %s", f.__name__)
+                            event_name = list(event_names)[0]
+                            value = item
 
-                    gevent.sleep(sleep)
+                        if not check or event_name in event_names:
+                            emit(event_name, value)
+                        else:
+                            log.warning(
+                                "%s emited unknown event %s",
+                                f.__name__, event_name
+                            )
+                except Exception:
+                    if time.time() - start_time < 10:
+                        log.critical("Can't run emitter \"%s\" from module %s",
+                                     f.__name__, f.__module__)
+                        raise
+                    else:
+                        log.exception("Exception in emitter %s", f.__name__)
 
-            return gevent.Greenlet(run)
+                gevent.sleep(sleep)
 
-        __emitters.add(inner)
-        return inner
+        gr = gevent.Greenlet(run)
+        return __emitters.add(gr)
+
     return wrapper
 
 
@@ -190,7 +187,7 @@ def splitter(listen_events, emit_events=(), check=True):
 
 def run_emitters():
     for emitter in __emitters:
-        gr = emitter()
+        gr = emitter
         gr.start()
         __jobs.append(gr)
 
