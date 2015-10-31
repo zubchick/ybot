@@ -7,7 +7,7 @@ import telegram
 
 from ybot.state import State
 from ybot.events import subscibe
-from ybot.modules.commands import add_command
+from ybot.modules import add_command
 from ybot.modules.telegram import bot
 
 log = logging.getLogger(__name__)

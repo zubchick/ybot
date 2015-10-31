@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import absolute_import
 
-from ..dialog import Response, create_dialog
+from ybot.modules.dialog import Response, create_dialog
 
 
 def knockknock(state, value):
