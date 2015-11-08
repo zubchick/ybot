@@ -57,6 +57,3 @@ def main():
         log.critical('Unhandled exception, exit')
     finally:
         kill_all()
-
-if __name__ == '__main__':
-    main()
