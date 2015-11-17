@@ -203,6 +203,7 @@ def run_eventloop():
         event_name, value = __events.get()
 
         for listener in __listeners[event_name]:
+            log.debug('Send event %s to %s', event_name, listener)
             listener.events.put((event_name, value))
 
         gevent.sleep(0)
