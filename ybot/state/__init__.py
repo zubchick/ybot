@@ -20,7 +20,7 @@ class BaseState(object):
 
     def get_chat_ids(self, name):
         ''' all chat ids with key == name '''
-        return self._get_chat_ids(self._key(name))
+        return self._get_chat_ids(self._key(name)) or []
 
     # methods to override
     @staticmethod
