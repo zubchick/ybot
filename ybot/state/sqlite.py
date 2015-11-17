@@ -27,7 +27,7 @@ class State(BaseState):
         )''')
         c.execute('''create index if not exists key_kv on kv (key)''')
         c.execute('''create index if not exists chat_id_kv on kv (chat_id)''')
-        c.execute('''create unique index key_chat_id on kv (key, chat_id)''')
+        c.execute('''create unique index if not exists key_chat_id on kv (key, chat_id)''')
 
         conn.commit()
 
