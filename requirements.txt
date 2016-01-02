@@ -1,3 +1,4 @@
 crontab>=0.20.2
+requests>=1.0
 
 https://github.com/zubchick/python-telegram-bot/tarball/9bc756726f2727d3ff2f6344e03fd523f2ef584c#egg=telegram
