@@ -1,3 +1,5 @@
+gevent>=1.0.2
+PyYAML>=3.11
 crontab>=0.20.2
 requests>=1.0
 
